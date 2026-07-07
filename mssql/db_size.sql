@@ -144,6 +144,7 @@ Select
   , TotalSpaceMB  = Format( ( Sum( a.total_pages ) * 8 ) / 1024.00, 'N2' )
   , UsedSpaceKB	  = Format( Sum( a.used_pages ) * 8, 'N2' )
   , UnusedSpaceKB = Format(( Sum( a.total_pages ) - Sum( a.used_pages )) * 8, 'N2' )
+  , UnusedSpacePct = Format(IIf((Sum( a.total_pages ) * 8) = 0, 0, (( Sum( a.total_pages ) - Sum( a.used_pages )) * 8.0) / (Sum( a.total_pages ) * 8.0)), 'P2')
 From sys.tables					t
 Inner Join sys.indexes			i
 	On t.object_id = i.object_id

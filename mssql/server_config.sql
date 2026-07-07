@@ -1,22 +1,13 @@
-Declare @details Bit;
-Set @details = 0
+Declare @details Bit = 0;
 
 /* Basics */
 Select
 	ServerName			   = @@ServerName
-  --, ServerVersion		   = @@Version
-  , ServerVersionYear	   = Substring( @@Version, CharIndex( 'Microsoft SQL Server', @@Version, 0 ) + 20, 5 )
-  , ServerEdition		   = Substring(
-										  @@Version
-										, CharIndex( 'Microsoft Corporation', @@Version, 0 ) + 21
-										, ( CharIndex( 'Edition', @@Version, 0 ) - ( CharIndex( 'Microsoft Corporation', @@Version, 0 ) + 21 ))
-									  )
   , SQLServerUpTimeDays	   = DateDiff( Day, sqlserver_start_time, GetDate())
   , SQLServerStartTime	   = sqlserver_start_time
   , CPUCount			   = cpu_count
   --, SocketCount			   = socket_count
   --, CoresPerSocket		   = cores_per_socket
-  , HostPhysicalMemoryGB   = physical_memory_kb / 1024 / 1024
   , SqlInstanceMaxMemoryGB = (
 								 Select Top ( 1 ) Cast(value_in_use As Int)
 								 From sys.configurations
@@ -38,9 +29,16 @@ Select
 											) / 1024.0 / ( physical_memory_kb / 1024.0 / 1024.0 )
 										   ) * 100 As Numeric(4, 2))
 							 End
+  --, HostPhysicalMemoryGB   = physical_memory_kb / 1024 / 1024
   , db_size.RowsSizeGB
   , db_size.LogSizeGB
   , db_size.TotalSizeGB
+  , ServerVersionYear	   = Substring( @@Version, CharIndex( 'Microsoft SQL Server', @@Version, 0 ) + 20, 5 )
+  , ServerEdition		   = Substring(
+										  @@Version
+										, CharIndex( 'Microsoft Corporation', @@Version, 0 ) + 21
+										, ( CharIndex( 'Edition', @@Version, 0 ) - ( CharIndex( 'Microsoft Corporation', @@Version, 0 ) + 21 ))
+									  )
 --, MaxWorkerCount		   = max_workers_count
 From sys.dm_os_sys_info os
 Join (
@@ -74,7 +72,7 @@ If @details = 1
 		  , LogicalName		  = mf.name
 		  , TypeDesc		  = mf.type_desc
 		  , SizeGB			  = Cast(( mf.size * 8.0 ) / 1024.0 / 1024.0 As BigInt)
-		  , GowthMB			  = ( mf.growth * 8 ) / 1024
+		  , GrowthMB			  = ( mf.growth * 8 ) / 1024
 		  , MaxSizeGB		  = Cast(Case When mf.max_size = 0 Then -1 Else Cast(Cast(mf.max_size As BigInt) * 8 / 1024 / 1024 As BigInt)End As Numeric(36, 2))
 		  , PhysicalName	  = mf.physical_name
 		From sys.master_files	   mf
@@ -96,9 +94,11 @@ Else
 			dbs.name		  DBName
 		  , DatabaseType	  = Case When dbs.name In ( 'master', 'model', 'msdb', 'tempdb' ) Then 'System' Else 'User' End
 		  , DatabaseOwnerName = sp.name
+		  , RecoveryModel	  = dbs.recovery_model_desc
 		  , RowsSizeGB		  = Cast(( db_rows.sum_size * 8.0 ) / 1024.0 / 1024.0 As BigInt)
 		  , LogSizeGB		  = Cast(( db_log.sum_size * 8.0 ) / 1024.0 / 1024.0 As BigInt)
 		  , TotalSizeGB		  = Cast((( db_rows.sum_size + db_log.sum_size ) * 8.0 ) / 1024.0 / 1024.0 As BigInt)
+		  , DatabaseCompaibilityLevel = dbs.compatibility_level
 		From sys.databases		   dbs
 		Join sys.server_principals sp
 			On dbs.owner_sid = sp.sid
